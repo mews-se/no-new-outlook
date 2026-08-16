@@ -41,7 +41,7 @@ Remove-Item "$oobe\OutlookUpdate" -Recurse -Force -ErrorAction SilentlyContinue
 if (Test-Path $oobe) { Remove-ItemProperty $oobe -Name OutlookUpdate -ErrorAction SilentlyContinue }
 if (-not (Test-Path $oobe)) { New-Item $oobe -Force | Out-Null }
 # add to the block list without clobbering entries other tools may have put there
-$blocked = [string](Get-ItemProperty $oobe -Name BlockedOobeUpdaters -ErrorAction SilentlyContinue).BlockedOobeUpdaters
+$blocked = ([string](Get-ItemProperty $oobe -Name BlockedOobeUpdaters -ErrorAction SilentlyContinue).BlockedOobeUpdaters).Trim()
 if ($blocked -notmatch '^\[.+\]$') { $blocked = '["MS_Outlook"]' }
 elseif ($blocked -notmatch '"MS_Outlook"') { $blocked = $blocked -replace '\]$', ',"MS_Outlook"]' }
 else { $blocked = $null }
@@ -61,6 +61,14 @@ foreach ($sid in $sids) {
     Set-RegDword "$u\Software\Policies\Microsoft\office\16.0\outlook\options\general" HideNewOutlookToggle 1
     Set-RegDword "$u\Software\Microsoft\Office\16.0\Outlook\Options\General" HideNewOutlookToggle 1
     Remove-ItemProperty "$u\Software\Microsoft\Office\16.0\Outlook\Preferences" -Name UseNewOutlook -ErrorAction SilentlyContinue
+}
+
+$leftover = @(foreach ($app in $apps) { Get-AppxPackage -AllUsers $app -ErrorAction SilentlyContinue }) +
+    @(Get-AppxProvisionedPackage -Online | Where-Object { $_.DisplayName -in $apps })
+if ($leftover) {
+    Write-Host ''
+    Write-Warning 'Some packages survived removal, likely because they are in use. Close Outlook and run the script again. The registry blocks are in place either way.'
+    exit 1
 }
 
 Write-Host ''

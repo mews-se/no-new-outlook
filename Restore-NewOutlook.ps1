@@ -18,10 +18,11 @@ foreach ($pfn in 'Microsoft.OutlookForWindows_8wekyb3d8bbwe', 'microsoft.windows
     Remove-Item "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\Deprovisioned\$pfn" -Recurse -Force -ErrorAction SilentlyContinue
 }
 $oobe = 'HKLM:\SOFTWARE\Microsoft\WindowsUpdate\Orchestrator\UScheduler_Oobe'
-$blocked = [string](Get-ItemProperty $oobe -Name BlockedOobeUpdaters -ErrorAction SilentlyContinue).BlockedOobeUpdaters
-if ($blocked -eq '["MS_Outlook"]') { Remove-ItemProperty $oobe -Name BlockedOobeUpdaters }
-elseif ($blocked -match '"MS_Outlook"') {
-    Set-ItemProperty $oobe -Name BlockedOobeUpdaters -Value ($blocked -replace '"MS_Outlook",?', '' -replace ',\]', ']') -Type String
+$blocked = ([string](Get-ItemProperty $oobe -Name BlockedOobeUpdaters -ErrorAction SilentlyContinue).BlockedOobeUpdaters).Trim()
+if ($blocked -match '"MS_Outlook"') {
+    $blocked = $blocked -replace '\s*"MS_Outlook"\s*,?', '' -replace ',\s*\]', ']'
+    if ($blocked -match '^\[\s*\]$') { Remove-ItemProperty $oobe -Name BlockedOobeUpdaters }
+    else { Set-ItemProperty $oobe -Name BlockedOobeUpdaters -Value $blocked -Type String }
 }
 Remove-Item 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Orchestrator\UScheduler\OutlookUpdate' -Recurse -Force -ErrorAction SilentlyContinue
 

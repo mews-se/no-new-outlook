@@ -36,11 +36,11 @@ Classic Outlook gets the policy values that stop the migration machinery, writte
 powershell -ExecutionPolicy Bypass -File .\Restore-NewOutlook.ps1
 ```
 
-This removes everything the remove script wrote. The per-user settings follow the same loaded-profile rule as above, so run it again for anyone who wasn't logged in. It doesn't reinstall anything. New Outlook is on the Microsoft Store if you actually want it back; Mail and Calendar are gone for good, Microsoft discontinued those.
+This takes the machine back to Microsoft defaults. It works from what those defaults should be, not from a saved snapshot, so a value that some other tool had set before ends up removed rather than put back. The per-user settings follow the same loaded-profile rule as above, so run it again for anyone who wasn't logged in. It doesn't reinstall anything. New Outlook is on the Microsoft Store if you actually want it back; Mail and Calendar are gone for good, Microsoft discontinued those.
 
 ## What it can't do
 
-A deliberate manual install from the Microsoft Store still works; nothing supported blocks that. The Start menu may also keep a leftover "Outlook (new)" pin that is just a placeholder — clicking it installs the app from the Store, so unpin it instead. On consumer editions Windows likes to advertise the app in Start's Recommended section as well, which is the same one-click install; the cure there is turning off Start menu recommendations.
+A deliberate manual install from the Microsoft Store still works; the script doesn't try to block that. An organization can, by locking down Store access or with AppLocker rules, but that's heavier artillery than a cleanup script should fire. The Start menu may also keep a leftover "Outlook (new)" pin that is just a placeholder — clicking it installs the app from the Store, so unpin it instead. On consumer editions Windows likes to advertise the app in Start's Recommended section as well, which is the same one-click install; the cure there is turning off Start menu recommendations.
 
 Reinstalling Microsoft 365 Apps brings new Outlook along with it these days. If you deploy Office with the Deployment Tool, add `<ExcludeApp ID="OutlookForWindows" />` to the configuration. The plain installer from office.com has no such option, so after an Office reinstall or repair, run the script again. Same thing after a Windows reset or in-place repair install: the protections live in the registry, and a rebuilt Windows starts the cycle over.
 
