@@ -36,7 +36,7 @@ Classic Outlook gets the policy values that stop the migration machinery, writte
 powershell -ExecutionPolicy Bypass -File .\Restore-NewOutlook.ps1
 ```
 
-This takes the machine back to Microsoft defaults. It works from what those defaults should be, not from a saved snapshot, so a value that some other tool had set before ends up removed rather than put back. The per-user settings follow the same loaded-profile rule as above, so run it again for anyone who wasn't logged in. It doesn't reinstall anything. New Outlook is on the Microsoft Store if you actually want it back; Mail and Calendar are gone for good, Microsoft discontinued those.
+This takes every block and policy the remove script set back to Microsoft defaults. It works from what those defaults should be, not from a saved snapshot, so a value that some other tool had set before ends up removed rather than put back. The per-user settings follow the same loaded-profile rule as above, so run it again for anyone who wasn't logged in. It doesn't reinstall anything. New Outlook is on the Microsoft Store if you actually want it back; Mail and Calendar are gone for good, Microsoft discontinued those.
 
 ## What it can't do
 
@@ -47,6 +47,10 @@ Reinstalling Microsoft 365 Apps brings new Outlook along with it these days. If 
 If your mailbox lives in a company tenant, Intune policies and admin-controlled migration beat anything set locally. That is between you and your IT department. If you happen to be that department, Exchange Online has the real kill switch: `Get-OwaMailboxPolicy | Set-OwaMailboxPolicy -OneWinNativeOutlookEnabled $false` blocks the mailboxes from new Outlook entirely, so even a manual install dead-ends at sign-in.
 
 Microsoft changes these mechanisms every now and then. If new Outlook reappears after some future update, open an issue.
+
+## Tests
+
+`Invoke-Pester tests` runs a small suite: both scripts must parse, and the block list handling and the SID filter are exercised against their corner cases. The registry logic is mirrored in the test file since the scripts themselves only run elevated on Windows.
 
 ## License
 

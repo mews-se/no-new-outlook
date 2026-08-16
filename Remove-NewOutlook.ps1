@@ -63,7 +63,8 @@ foreach ($sid in $sids) {
     Remove-ItemProperty "$u\Software\Microsoft\Office\16.0\Outlook\Preferences" -Name UseNewOutlook -ErrorAction SilentlyContinue
 }
 
-$leftover = @(foreach ($app in $apps) { Get-AppxPackage -AllUsers $app -ErrorAction SilentlyContinue }) +
+# fail closed: an inventory error here should abort loudly, not pass as "all gone"
+$leftover = @(foreach ($app in $apps) { Get-AppxPackage -AllUsers $app }) +
     @(Get-AppxProvisionedPackage -Online | Where-Object { $_.DisplayName -in $apps })
 if ($leftover) {
     Write-Host ''
