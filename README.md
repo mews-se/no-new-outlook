@@ -18,7 +18,7 @@ powershell -ExecutionPolicy Bypass -File .\Remove-NewOutlook.ps1
 
 Use the built-in Windows PowerShell (powershell.exe), not PowerShell 7 — the Appx cmdlets are unreliable there and the script refuses to run in it.
 
-One run covers the machine and every user profile that is logged in at the time. The per-user Outlook settings can only be written into loaded profiles, so if several people use the machine, log them in first or run the script again later. Restart classic Outlook afterwards for the toggle to disappear.
+One run covers the machine and every user profile that is logged in at the time. The per-user Outlook settings can only be written into loaded profiles, so if several people use the machine, log them in first or run the script again later. Sign out and back in (or reboot) before checking classic Outlook: it reads the toggle setting at logon, not at every launch, so the "Try the new Outlook" switch hangs around until the next sign-in.
 
 ## What it does
 
@@ -44,7 +44,7 @@ A deliberate manual install from the Microsoft Store still works; nothing suppor
 
 Reinstalling Microsoft 365 Apps brings new Outlook along with it these days. If you deploy Office with the Deployment Tool, add `<ExcludeApp ID="OutlookForWindows" />` to the configuration. The plain installer from office.com has no such option, so after an Office reinstall or repair, run the script again. Same thing after a Windows reset or in-place repair install: the protections live in the registry, and a rebuilt Windows starts the cycle over.
 
-If your mailbox lives in a company tenant, Intune policies and admin-controlled migration beat anything set locally. That is between you and your IT department.
+If your mailbox lives in a company tenant, Intune policies and admin-controlled migration beat anything set locally. That is between you and your IT department. If you happen to be that department, Exchange Online has the real kill switch: `Get-OwaMailboxPolicy | Set-OwaMailboxPolicy -OneWinNativeOutlookEnabled $false` blocks the mailboxes from new Outlook entirely, so even a manual install dead-ends at sign-in.
 
 Microsoft changes these mechanisms every now and then. If new Outlook reappears after some future update, open an issue.
 
