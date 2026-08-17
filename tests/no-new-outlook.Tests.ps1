@@ -1,9 +1,24 @@
 #Requires -Modules @{ ModuleName = 'Pester'; ModuleVersion = '5.1' }
 # run with: Invoke-Pester tests
-# the append/strip/sid blocks mirror the logic in the scripts; keep them in sync
+# the append/strip/sid/cleanup blocks mirror the logic in the scripts; keep them in sync
+
+BeforeDiscovery {
+    # the cleanup block needs a real registry, so it only runs on windows
+    $onWindows = $PSVersionTable.PSEdition -eq 'Desktop' -or $IsWindows
+}
 
 BeforeAll {
     $repo = Split-Path $PSScriptRoot -Parent
+
+    function Remove-EmptyKeys($leaf, $stopAt) {
+        $path = $leaf
+        while ($path -like "$stopAt\*") {
+            $key = Get-Item $path -ErrorAction SilentlyContinue
+            if (-not $key -or $key.ValueCount -or $key.SubKeyCount) { break }
+            Remove-Item $path -Force
+            $path = Split-Path $path -Parent
+        }
+    }
 
     function Add-BlockEntry([string]$blocked) {
         $blocked = $blocked.Trim()
@@ -62,6 +77,42 @@ Describe 'BlockedOobeUpdaters strip' {
     It 'ignores foreign values' {
         Remove-BlockEntry '["MS_DevHome"]' | Should -Be '<untouched>'
         Remove-BlockEntry '' | Should -Be '<untouched>'
+    }
+}
+
+Describe 'empty key cleanup' -Skip:(-not $onWindows) {
+    BeforeAll { $root = 'HKCU:\Software\no-new-outlook-tests' }
+    BeforeEach {
+        Remove-Item $root -Recurse -Force -ErrorAction SilentlyContinue
+        New-Item "$root\a\b\c" -Force | Out-Null
+    }
+    AfterAll { Remove-Item $root -Recurse -Force -ErrorAction SilentlyContinue }
+
+    It 'walks up the empty chain and stops at the stop key' {
+        Remove-EmptyKeys "$root\a\b\c" $root
+        Test-Path "$root\a" | Should -BeFalse
+        Test-Path $root | Should -BeTrue
+    }
+    It 'keeps a leaf that still holds a value' {
+        Set-ItemProperty "$root\a\b\c" -Name Keep -Value 1 -Type DWord
+        Remove-EmptyKeys "$root\a\b\c" $root
+        Test-Path "$root\a\b\c" | Should -BeTrue
+    }
+    It 'stops below a parent that still holds a value' {
+        Set-ItemProperty "$root\a" -Name Keep -Value 1 -Type DWord
+        Remove-EmptyKeys "$root\a\b\c" $root
+        Test-Path "$root\a\b" | Should -BeFalse
+        Test-Path "$root\a" | Should -BeTrue
+    }
+    It 'stops below a parent that still holds a subkey' {
+        New-Item "$root\a\b\sibling" -Force | Out-Null
+        Remove-EmptyKeys "$root\a\b\c" $root
+        Test-Path "$root\a\b\c" | Should -BeFalse
+        Test-Path "$root\a\b" | Should -BeTrue
+    }
+    It 'shrugs at a leaf that was never there' {
+        { Remove-EmptyKeys "$root\gone\missing" $root } | Should -Not -Throw
+        Test-Path $root | Should -BeTrue
     }
 }
 

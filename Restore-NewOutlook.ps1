@@ -13,6 +13,19 @@ if (-not $user.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator))
     exit 1
 }
 
+# the remove script creates keys on its way in, so removing only the values it
+# wrote leaves empty shells behind. take those back out, bottom up, and stop at
+# the first key that still holds values or subkeys: it is not ours to delete
+function Remove-EmptyKeys($leaf, $stopAt) {
+    $path = $leaf
+    while ($path -like "$stopAt\*") {
+        $key = Get-Item $path -ErrorAction SilentlyContinue
+        if (-not $key -or $key.ValueCount -or $key.SubKeyCount) { break }
+        Remove-Item $path -Force
+        $path = Split-Path $path -Parent
+    }
+}
+
 Write-Host 'Removing the deprovision markers and the orchestrator block'
 foreach ($pfn in 'Microsoft.OutlookForWindows_8wekyb3d8bbwe', 'microsoft.windowscommunicationsapps_8wekyb3d8bbwe') {
     Remove-Item "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\Deprovisioned\$pfn" -Recurse -Force -ErrorAction SilentlyContinue
@@ -25,6 +38,8 @@ if ($blocked -match '"MS_Outlook"') {
     else { Set-ItemProperty $oobe -Name BlockedOobeUpdaters -Value $blocked -Type String }
 }
 Remove-Item 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Orchestrator\UScheduler\OutlookUpdate' -Recurse -Force -ErrorAction SilentlyContinue
+Remove-EmptyKeys $oobe 'HKLM:\SOFTWARE\Microsoft\WindowsUpdate\Orchestrator'
+Remove-EmptyKeys 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Orchestrator\UScheduler' 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate'
 
 Write-Host 'Removing the classic Outlook policies (all logged-in users)'
 $sids = (Get-ChildItem Registry::HKEY_USERS | Where-Object { $_.PSChildName -match '^S-1-(5-21|12-1)(-\d+){4}$' }).PSChildName
@@ -35,6 +50,11 @@ foreach ($sid in $sids) {
         Remove-ItemProperty "$u\Software\Policies\Microsoft\office\16.0\outlook\options\general" -Name $name -ErrorAction SilentlyContinue
     }
     Remove-ItemProperty "$u\Software\Microsoft\Office\16.0\Outlook\Options\General" -Name HideNewOutlookToggle -ErrorAction SilentlyContinue
+
+    $policies = "$u\Software\Policies\Microsoft"
+    Remove-EmptyKeys "$policies\office\16.0\outlook\preferences" $policies
+    Remove-EmptyKeys "$policies\office\16.0\outlook\options\general" $policies
+    Remove-EmptyKeys "$u\Software\Microsoft\Office\16.0\Outlook\Options\General" "$u\Software\Microsoft"
 }
 
 Write-Host ''
