@@ -36,11 +36,11 @@ Classic Outlook gets the policy values that stop the migration machinery, writte
 powershell -ExecutionPolicy Bypass -File .\Restore-NewOutlook.ps1
 ```
 
-This takes every block and policy the remove script set back to Microsoft defaults. It works from what those defaults should be, not from a saved snapshot, so a value that some other tool had set before ends up removed rather than put back. The per-user settings follow the same loaded-profile rule as above, so run it again for anyone who wasn't logged in. It doesn't reinstall anything. New Outlook is on the Microsoft Store if you actually want it back; Mail and Calendar are gone for good, Microsoft discontinued those.
+This takes every block and policy the remove script set back to Microsoft defaults, removes the keys it created once they are empty, and drops the AppLocker rules if you added them. It works from what those defaults should be, not from a saved snapshot, so a value that some other tool had set before ends up removed rather than put back. Keys that still hold something else are left alone. The per-user settings follow the same loaded-profile rule as above, so run it again for anyone who wasn't logged in. It doesn't reinstall anything. New Outlook is on the Microsoft Store if you actually want it back; Mail and Calendar are gone for good, Microsoft discontinued those.
 
 ## What it can't do
 
-A deliberate manual install from the Microsoft Store still works; the script doesn't try to block that. An organization can, by locking down Store access or with AppLocker rules, but that's heavier artillery than a cleanup script should fire. The Start menu may also keep a leftover "Outlook (new)" pin that is just a placeholder — clicking it installs the app from the Store, so unpin it instead. On consumer editions Windows likes to advertise the app in Start's Recommended section as well, which is the same one-click install; the cure there is turning off Start menu recommendations.
+A deliberate manual install from the Microsoft Store still works; the script doesn't try to block that. Neither does it stop Office's own installer — see [the next section](#when-that-isnt-enough) for that one. The Start menu may also keep a leftover "Outlook (new)" pin that is just a placeholder — clicking it installs the app from the Store, so unpin it instead. On consumer editions Windows likes to advertise the app in Start's Recommended section as well, which is the same one-click install; the cure there is turning off Start menu recommendations.
 
 Reinstalling Microsoft 365 Apps brings new Outlook along with it these days. If you deploy Office with the Deployment Tool, add `<ExcludeApp ID="OutlookForWindows" />` to the configuration. The plain installer from office.com has no such option, so after an Office reinstall or repair, run the script again. Same thing after a Windows reset or in-place repair install: the protections live in the registry, and a rebuilt Windows starts the cycle over.
 
@@ -48,9 +48,21 @@ If your mailbox lives in a company tenant, Intune policies and admin-controlled 
 
 Microsoft changes these mechanisms every now and then. If new Outlook reappears after some future update, open an issue.
 
+## When that isn't enough
+
+There is a fourth way in, and it walks past everything above. Classic Outlook ships its own installer, `NewOutlookInstaller.exe`, which pulls the MSIX straight from `res.cdn.office.net` and registers it for the current user. No Store, no Windows Update, no provisioning — so the deprovision marker, `BlockedOobeUpdaters` and the orchestrator job never get a say, and none of them are touched when it happens. On the business SKUs the migration policies are ignored on top of that, so `DoNewOutlookAutoMigration = 0` doesn't stop it either: Microsoft picks the machine for a migration wave, writes `NewOutlookAutoMigrationType = 1` into the user's Outlook key, and at the next sign-in the app is simply back.
+
+If that is happening to you, there is a bigger hammer:
+
+```
+powershell -ExecutionPolicy Bypass -File .\Block-NewOutlookAppLocker.ps1
+```
+
+It denies the `Microsoft.OutlookForWindows` package family with an AppLocker rule, which stops the install and the app itself whichever path they take. Two things are worth knowing first. AppLocker treats packaged apps as an allow-list, so a rule collection holding any rule blocks every packaged app that isn't explicitly allowed — on a machine with no rules yet the script adds an allow-everything rule alongside the deny, because without it the Start menu and Settings go too. And it dry-runs the finished policy against every installed package before applying it, refusing to touch anything if more than new Outlook would be caught. Microsoft supports AppLocker enforcement on Enterprise and Education; it does work on Pro, but you are outside the support matrix there. `Restore-NewOutlook.ps1` takes the rules back out.
+
 ## Tests
 
-`Invoke-Pester tests` runs a small suite: both scripts must parse, and the block list handling and the SID filter are exercised against their corner cases. The registry logic is mirrored in the test file since the scripts themselves only run elevated on Windows.
+`Invoke-Pester tests` runs a small suite: both scripts must parse, the block list handling and the SID filter are exercised against their corner cases, and the empty-key cleanup runs against real keys under `HKCU` (skipped when not on Windows). The registry logic is mirrored in the test file since the scripts themselves only run elevated on Windows.
 
 ## License
 

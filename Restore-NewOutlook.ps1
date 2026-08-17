@@ -57,5 +57,25 @@ foreach ($sid in $sids) {
     Remove-EmptyKeys "$u\Software\Microsoft\Office\16.0\Outlook\Options\General" "$u\Software\Microsoft"
 }
 
+# the applocker rules from Block-NewOutlookAppLocker.ps1, if they were ever set.
+# only the two rules with our ids go: an existing policy keeps everything else
+if (Get-Command Get-AppLockerPolicy -ErrorAction SilentlyContinue) {
+    $ourIds = 'f6b9a6c1-1f1a-4d5e-9c2b-5a1e0d7c4b01', 'f6b9a6c1-1f1a-4d5e-9c2b-5a1e0d7c4b02'
+    $xml = [xml](Get-AppLockerPolicy -Local -Xml)
+    $ours = @($xml.SelectNodes('//FilePublisherRule') | Where-Object { $_.Id -in $ourIds })
+    if ($ours) {
+        Write-Host 'Removing the AppLocker rules'
+        foreach ($rule in $ours) { $rule.ParentNode.RemoveChild($rule) | Out-Null }
+        # a collection left empty would still block every packaged app it covers
+        foreach ($collection in @($xml.SelectNodes('//RuleCollection'))) {
+            if (-not $collection.ChildNodes.Count) { $collection.ParentNode.RemoveChild($collection) | Out-Null }
+        }
+        $tmp = Join-Path $env:TEMP 'no-new-outlook-applocker-restore.xml'
+        $xml.Save($tmp)
+        Set-AppLockerPolicy -XmlPolicy $tmp
+        Remove-Item $tmp -Force -ErrorAction SilentlyContinue
+    }
+}
+
 Write-Host ''
 Write-Host 'Done. Install new Outlook from the Microsoft Store if you want it back.'
