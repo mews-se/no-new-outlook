@@ -74,6 +74,10 @@ if (Get-Command Get-AppLockerPolicy -ErrorAction SilentlyContinue) {
         $xml.Save($tmp)
         Set-AppLockerPolicy -XmlPolicy $tmp
         Remove-Item $tmp -Force -ErrorAction SilentlyContinue
+        # the block script set the appid service to start at boot; back to the
+        # manual trigger start windows ships with. the running instance can stay
+        # until reboot
+        Set-ItemProperty HKLM:\SYSTEM\CurrentControlSet\Services\AppIDSvc -Name Start -Value 3 -Type DWord -ErrorAction SilentlyContinue
     }
 }
 

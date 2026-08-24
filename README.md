@@ -36,7 +36,7 @@ Classic Outlook gets the policy values that stop the migration machinery, writte
 powershell -ExecutionPolicy Bypass -File .\Restore-NewOutlook.ps1
 ```
 
-This takes every block and policy the remove script set back to Microsoft defaults, removes the keys it created once they are empty, and drops the AppLocker rules if you added them. It works from what those defaults should be, not from a saved snapshot, so a value that some other tool had set before ends up removed rather than put back. Keys that still hold something else are left alone. The per-user settings follow the same loaded-profile rule as above, so run it again for anyone who wasn't logged in. It doesn't reinstall anything. New Outlook is on the Microsoft Store if you actually want it back; Mail and Calendar are gone for good, Microsoft discontinued those.
+This takes every block and policy the remove script set back to Microsoft defaults, removes the keys it created once they are empty, and drops the AppLocker rules if you added them, along with the AppID service start type they came with. It works from what those defaults should be, not from a saved snapshot, so a value that some other tool had set before ends up removed rather than put back. Keys that still hold something else are left alone. The per-user settings follow the same loaded-profile rule as above, so run it again for anyone who wasn't logged in. It doesn't reinstall anything. New Outlook is on the Microsoft Store if you actually want it back; Mail and Calendar are gone for good, Microsoft discontinued those.
 
 ## What it can't do
 
@@ -58,7 +58,9 @@ If that is happening to you, there is a bigger hammer:
 powershell -ExecutionPolicy Bypass -File .\Block-NewOutlookAppLocker.ps1
 ```
 
-It denies the `Microsoft.OutlookForWindows` package family with an AppLocker rule, which stops the install and the app itself whichever path they take. Two things are worth knowing first. AppLocker treats packaged apps as an allow-list, so a rule collection holding any rule blocks every packaged app that isn't explicitly allowed — on a machine with no rules yet the script adds an allow-everything rule alongside the deny, because without it the Start menu and Settings go too. And it dry-runs the finished policy against every installed package before applying it, refusing to touch anything if more than new Outlook would be caught. Microsoft supports AppLocker enforcement on Enterprise and Education; it does work on Pro, but you are outside the support matrix there. `Restore-NewOutlook.ps1` takes the rules back out.
+It denies the `Microsoft.OutlookForWindows` package family with an AppLocker rule, which stops the install and the app itself whichever path they take. Two things are worth knowing first. AppLocker treats packaged apps as an allow-list, so a rule collection holding any rule blocks every packaged app that isn't explicitly allowed — on a machine with no rules yet the script adds an allow-everything rule alongside the deny, because without it the Start menu and Settings go too. And it dry-runs the finished policy against every installed package before applying it, refusing to touch anything if more than new Outlook would be caught.
+
+The rules alone block nothing: the AppID service does the enforcing, and its trigger start turned out not to fire on every machine — a policy can sit in the registry across reboots with the service stopped, the AppLocker logs empty and new Outlook installing away as if no rule existed. The script therefore sets the service to start at boot (through the registry; sc.exe considers the service protected and refuses), starts it right away, and treats a stopped service as a failure rather than reporting done. Microsoft supports AppLocker enforcement on Enterprise and Education; it does work on Pro, but you are outside the support matrix there. `Restore-NewOutlook.ps1` takes the rules back out and puts the service start type back.
 
 ## Tests
 

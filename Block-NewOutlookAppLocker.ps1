@@ -101,9 +101,27 @@ if (-not @($live.SelectNodes('//FilePublisherRule') | Where-Object Id -eq $denyI
     exit 1
 }
 
+# the appid service does the enforcing, and its trigger start cannot be
+# trusted: a policy can sit in the registry over a reboot with the service
+# stopped, and nothing blocks anything. sc.exe refuses to reconfigure the
+# service (it is protected), but the start value in the registry is honored
+# at boot
+try {
+    Set-ItemProperty HKLM:\SYSTEM\CurrentControlSet\Services\AppIDSvc -Name Start -Value 2 -Type DWord
+} catch {
+    Write-Warning 'Could not set the AppID service to start at boot; the block ends at the next reboot unless this script is run again.'
+}
+if ((Get-Service AppIDSvc).Status -ne 'Running') {
+    Start-Service AppIDSvc
+}
+if ((Get-Service AppIDSvc).Status -ne 'Running') {
+    Write-Warning 'The AppID service is not running, so nothing enforces the policy right now.'
+    exit 1
+}
+
 Write-Host ''
 Write-Host "Done. New Outlook is blocked from installing and from running; the previous policy is saved at $backup."
 if (-not $blocked) {
     Write-Host 'The package is not installed at the moment, so the rule had nothing to match yet. It applies as soon as anything tries to install it.'
 }
-Write-Host 'The AppID service starts on its own from the policy. Undo with Restore-NewOutlook.ps1.'
+Write-Host 'Undo with Restore-NewOutlook.ps1.'
