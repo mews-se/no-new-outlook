@@ -48,7 +48,7 @@ Three things worth knowing. AppLocker treats packaged apps as an allow-list — 
 
 ## Tests
 
-`Invoke-Pester tests` checks that the scripts parse and exercises the block-list, SID-filter and key-cleanup logic against their corner cases. CI runs the suite on every push.
+`Invoke-Pester tests` checks that all three scripts parse. CI runs it on every push.
 
 ## License
 
