@@ -14,7 +14,13 @@ New Outlook keeps coming back: you uninstall it, an update or a migration wave r
 powershell -ExecutionPolicy Bypass -File .\Remove-NewOutlook.ps1
 ```
 
-Run it from an elevated built-in Windows PowerShell (powershell.exe) — the Appx cmdlets are unreliable in PowerShell 7 and the script refuses to run there. One run covers the machine and every user profile that is logged in at the time; run it again later for anyone who wasn't. Sign out and back in before checking classic Outlook: the "Try the new Outlook" toggle is read at logon, not at launch.
+Or straight from GitHub, nothing to download:
+
+```
+powershell -Command "irm https://raw.githubusercontent.com/mews-se/no-new-outlook/main/Remove-NewOutlook.ps1 | iex"
+```
+
+Run either from an elevated prompt. The file form needs the built-in Windows PowerShell (powershell.exe) — the Appx cmdlets are unreliable in PowerShell 7 and the script refuses to run there — while the one-liner starts powershell.exe itself, so it can be pasted into anything elevated. One run covers the machine and every user profile that is logged in at the time; run it again later for anyone who wasn't. Sign out and back in before checking classic Outlook: the "Try the new Outlook" toggle is read at logon, not at launch.
 
 ## What it does
 
@@ -24,6 +30,12 @@ Removes new Outlook for all users, deprovisions it, and writes the `Deprovisione
 
 ```
 powershell -ExecutionPolicy Bypass -File .\Restore-NewOutlook.ps1
+```
+
+or without downloading:
+
+```
+powershell -Command "irm https://raw.githubusercontent.com/mews-se/no-new-outlook/main/Restore-NewOutlook.ps1 | iex"
 ```
 
 Puts everything back to Microsoft defaults — from what those defaults should be, not from a snapshot — removes the keys it created once they are empty, and drops the AppLocker rules and their service start type if you added them. Same loaded-profile rule as above. It doesn't reinstall anything; new Outlook is on the Microsoft Store if you actually want it back.
@@ -40,6 +52,12 @@ There is a fourth way in that walks past everything above. Classic Outlook ships
 
 ```
 powershell -ExecutionPolicy Bypass -File .\Block-NewOutlookAppLocker.ps1
+```
+
+or without downloading:
+
+```
+powershell -Command "irm https://raw.githubusercontent.com/mews-se/no-new-outlook/main/Block-NewOutlookAppLocker.ps1 | iex"
 ```
 
 This denies the `Microsoft.OutlookForWindows` package with an AppLocker rule, which stops the install and the app whichever path they take. On a machine caught in a migration wave the block gets exercised at every sign-in: the installer's attempts land as event 8025 in the AppLocker log and go nowhere.
