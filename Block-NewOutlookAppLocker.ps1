@@ -79,8 +79,9 @@ $candidate = Join-Path $env:TEMP 'no-new-outlook-applocker.xml'
 $xml.Save($candidate)
 
 # dry run first: a packaged app that stops running here is a broken desktop, not
-# a blocked mail client, so nothing is applied until the blast radius is known
-$blocked = @(Get-AppxPackage | Test-AppLockerPolicy -XmlPolicy $candidate -User Everyone |
+# a blocked mail client, so nothing is applied until the blast radius is known.
+# the sid, not the name: "Everyone" does not resolve on every machine
+$blocked = @(Get-AppxPackage | Test-AppLockerPolicy -XmlPolicy $candidate -User S-1-1-0 |
     Where-Object PolicyDecision -ne 'Allowed')
 $unexpected = @($blocked | Where-Object { $_.FilePath -notmatch 'OutlookForWindows' })
 if ($unexpected) {
