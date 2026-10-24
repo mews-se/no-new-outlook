@@ -20,11 +20,11 @@ Or straight from GitHub, nothing to download:
 powershell -Command "irm https://raw.githubusercontent.com/mews-se/no-new-outlook/main/Remove-NewOutlook.ps1 | iex"
 ```
 
-Run either from an elevated prompt. The file form needs the built-in Windows PowerShell (powershell.exe). The Appx cmdlets are unreliable in PowerShell 7 and the script refuses to run there, while the one-liner starts powershell.exe itself, so it can be pasted into anything elevated. One run covers the machine and every user profile that is logged in at the time; run it again later for anyone who wasn't. Sign out and back in before checking classic Outlook: the "Try the new Outlook" toggle is read at logon, not at launch.
+Run either from an elevated prompt. The file form needs the built-in Windows PowerShell (powershell.exe). The Appx cmdlets are unreliable in PowerShell 7 and Remove-NewOutlook.ps1 refuses to run there, while the one-liner starts powershell.exe itself, so it can be pasted into anything elevated. One run covers the machine and every user profile that is logged in at the time; run it again later for anyone who wasn't. Sign out and back in before checking classic Outlook: the "Try the new Outlook" toggle is read at logon, not at launch.
 
 ## What it does
 
-Removes new Outlook for all users, deprovisions it, and writes the `Deprovisioned` marker in HKLM, even when the package was never provisioned, so Windows updates don't bring it back. The dead Mail and Calendar apps go too; what remains of them is a migration flow that installs new Outlook through the Store. On builds where new Outlook arrives through a Windows Update orchestrator job instead (Windows 10, and 11 23H2 before the March 2024 update), the job is deleted, `MS_Outlook` is appended to `BlockedOobeUpdaters` without touching other entries, and the job is marked as already completed; that last one is community-proven rather than documented. Classic Outlook gets the policy values that stop the migration machinery, written into every logged-in profile, and the toggle is hidden.
+Removes new Outlook for all users, deprovisions it, and writes the `Deprovisioned` marker in HKLM, even when the package was never provisioned, so Windows updates don't bring it back. The dead Mail and Calendar apps go too; what remains of them is a migration flow that installs new Outlook through the Store. On builds where new Outlook arrives through a Windows Update orchestrator job instead (Windows 10, and 11 23H2 before the March 2024 update), the job is deleted, `MS_Outlook` is appended to `BlockedOobeUpdaters` without touching other entries, and the job is marked as already completed; that last one is community-proven rather than documented. Classic Outlook gets the policy values that stop the migration machinery, written into every logged-in profile, and the toggle is hidden and switched back off. If a package survives the removal, usually because it is in use, the script says so and exits with 1; close Outlook and run it again.
 
 ## Undo
 
@@ -38,7 +38,7 @@ or without downloading:
 powershell -Command "irm https://raw.githubusercontent.com/mews-se/no-new-outlook/main/Restore-NewOutlook.ps1 | iex"
 ```
 
-Puts everything back to Microsoft defaults (from what those defaults should be, not from a snapshot), removes the keys it created once they are empty, and drops the AppLocker rules and their service start type if you added them. Same loaded-profile rule as above. It doesn't reinstall anything; new Outlook is on the Microsoft Store if you actually want it back.
+Puts everything back to Microsoft defaults (from what those defaults should be, not from a snapshot), removes the keys it created once they are empty, and drops the AppLocker rules and their service start type if you added them. The copy of the earlier policy that the block script saves in `%ProgramData%\no-new-outlook-applocker-backup.xml` is neither used nor deleted. Same loaded-profile rule as above. It doesn't reinstall anything; new Outlook is on the Microsoft Store if you actually want it back.
 
 ## What it can't do
 
@@ -62,7 +62,7 @@ powershell -Command "irm https://raw.githubusercontent.com/mews-se/no-new-outloo
 
 This denies the `Microsoft.OutlookForWindows` package with an AppLocker rule, which stops the install and the app whichever path they take. On a machine caught in a migration wave the block gets exercised at every sign-in: the installer's attempts land as event 8025 in the AppLocker log and go nowhere.
 
-Three things worth knowing. AppLocker treats packaged apps as an allow-list: a collection holding any rule blocks everything not explicitly allowed, so on a machine with no rules yet the script adds an allow-everything rule alongside the deny. It dry-runs the finished policy against every installed package and refuses to apply if more than new Outlook would be caught. And the rules alone block nothing: the AppID service does the enforcing and its trigger start can't be trusted, so the script sets the service to start at boot, starts it right away, and treats a stopped service as a failure. Microsoft supports AppLocker enforcement on Enterprise and Education; it does work on Pro, but you are outside the support matrix there.
+Three things worth knowing. AppLocker treats packaged apps as an allow-list: a collection holding any rule blocks everything not explicitly allowed, so on a machine with no rules yet the script adds an allow-everything rule alongside the deny. It dry-runs the finished policy against the packages installed for the account running it and refuses to apply if more than new Outlook would be caught. And the rules alone block nothing: the AppID service does the enforcing and its trigger start can't be trusted, so the script sets the service to start at boot, starts it right away, and treats a stopped service as a failure. Microsoft supports AppLocker enforcement on Enterprise and Education; it does work on Pro, but you are outside the support matrix there.
 
 ## Tests
 
